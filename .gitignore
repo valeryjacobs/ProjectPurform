@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# production
+/dist/
+
+# misc
+.DS_Store
+.env
+.env.*
+
+# local env files
+*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# TypeScript
+*.tsbuildinfo
+
+# Mac system files
+.DS_Store 
