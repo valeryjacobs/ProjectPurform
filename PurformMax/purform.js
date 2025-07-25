@@ -35,6 +35,9 @@ let wsClients = [];
 wss.on('connection', function connection(ws) {
   maxAPI.post("WebSocket client connected");
   wsClients.push(ws);
+  
+  // Send initial tempo to the newly connected client
+  maxAPI.outlet('sendInitialTempo');
 
   ws.on('message', function incoming(message) {
     maxAPI.post(`typeof message: ${typeof message}`);
@@ -63,6 +66,9 @@ wss.on('connection', function connection(ws) {
     } else if (msgStr.trim() === 'recordBassClip') {
       maxAPI.post("Record Bass Clip requested");
       maxAPI.outlet('recordBassClip');
+    } else if (msgStr.trim() === 'getTempo') {
+      maxAPI.post("Tempo requested");
+      maxAPI.outlet('getTempo');
     } else if (message === 'bang') {
       maxAPI.outlet('got a bang!');
     }
@@ -106,4 +112,20 @@ maxAPI.addHandler('trackNames', (...names) => {
       ws.send(JSON.stringify({ type: 'trackNames', data: namesArray }));
     }
   });
+});
+
+// Handler for receiving tempo updates from Max patch
+maxAPI.addHandler('currentTempo', (...args) => {
+  try {
+    const tempo = Array.isArray(args[0]) ? args[0][1] : args[0];
+    const tempoNumber = parseFloat(tempo);
+    maxAPI.post('Sending tempo to WS: ' + tempoNumber);
+    wsClients.forEach(ws => {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify({ type: 'currentTempo', data: tempoNumber }));
+      }
+    });
+  } catch (error) {
+    maxAPI.post('Error handling currentTempo: ' + error.message);
+  }
 });

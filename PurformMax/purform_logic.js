@@ -1,14 +1,60 @@
 autowatch = 1;
 
+// Singleton LiveAPI objects for efficiency
+var liveSetAPI = new LiveAPI();
+liveSetAPI.path = "live_set";
+
+// Track tempo changes using polling (more reliable)
+var lastSentTempo = 0;
+var tempoCheckTask = null;
+
+// Function to get current tempo and send to React
+function getCurrentTempo() {
+    var tempo = liveSetAPI.get("tempo");
+    // Convert to number to ensure it's not an object
+    var tempoNumber = parseFloat(tempo);
+    post("Current tempo: " + tempoNumber + " BPM\n");
+    outlet(0, ["currentTempo", tempoNumber]);
+    lastSentTempo = tempoNumber;
+}
+
+// Function to check for tempo changes
+function checkTempoChange() {
+    var currentTempo = liveSetAPI.get("tempo");
+    var currentTempoNumber = parseFloat(currentTempo);
+    
+    if (currentTempoNumber !== lastSentTempo) {
+        post("Tempo changed from " + lastSentTempo + " to " + currentTempoNumber + " BPM\n");
+        getCurrentTempo();
+    }
+}
+
+// Set up tempo checking
+function setupTempoChecking() {
+    // Create a task to check tempo every 200ms
+    tempoCheckTask = new Task(checkTempoChange, this);
+    tempoCheckTask.interval = 200;
+    tempoCheckTask.repeat();
+    post("Tempo checking set up (every 200ms)\n");
+    // Send initial tempo immediately
+    post("Sending initial tempo to React app...\n");
+    getCurrentTempo();
+}
+
+// Initialize tempo tracking
+var initTask = new Task(function() {
+    post("Tempo tracking initialized\n");
+    setupTempoChecking();
+}, this);
+initTask.schedule(1000); // Wait 1 second before starting
+
 // Utility: Find track index by name
 function findTrackIndexByName(name) {
-    var liveApi = new LiveAPI();
-    liveApi.path = "live_set";
-    var trackCount = liveApi.getcount("tracks");
+    var trackCount = liveSetAPI.getcount("tracks");
     for (var i = 0; i < trackCount; i++) {
-        var track = new LiveAPI();
-        track.path = "live_set tracks " + i;
-        var trackName = track.get("name");
+        var trackAPI = new LiveAPI();
+        trackAPI.path = "live_set tracks " + i;
+        var trackName = trackAPI.get("name");
         if (Array.isArray(trackName)) {
             trackName = trackName[trackName.length - 1];
         }
@@ -21,15 +67,13 @@ function findTrackIndexByName(name) {
 
 function getTrackNames() {
     post("getTrackNames called\n");
-    var liveApi = new LiveAPI();
-    liveApi.path = "live_set";
-    var trackCount = liveApi.getcount("tracks");
+    var trackCount = liveSetAPI.getcount("tracks");
     post("Track count: " + trackCount + "\n");
     var names = [];
     for (var i = 0; i < trackCount; i++) {
-        var track = new LiveAPI();
-        track.path = "live_set tracks " + i;
-        var name = track.get("name");
+        var trackAPI = new LiveAPI();
+        trackAPI.path = "live_set tracks " + i;
+        var name = trackAPI.get("name");
         if (Array.isArray(name)) {
             name = name[name.length - 1];
         }
@@ -49,11 +93,10 @@ function recordBassClip() {
     }
     post("Bass track index: " + bassIndex + "\n");
 
-    // Move Bass track to scene 3 (scene index 2)
+    // Create specific LiveAPI objects for this operation
     var clipSlot = new LiveAPI();
     clipSlot.path = "live_set tracks " + bassIndex + " clip_slots 2";
 
-    // Arm the Bass track
     var bassTrack = new LiveAPI();
     bassTrack.path = "live_set tracks " + bassIndex;
     bassTrack.set("arm", 1);
@@ -63,9 +106,7 @@ function recordBassClip() {
     clipSlot.call("fire");
     post("Recording started in scene 3\n");
 
-    // Schedule to stop recording and start playback after 4 beats (1 bar) * 4 = 4 beats
-    // This assumes 4/4 time and 1 beat = 1 quarter note
-    // Max's Task object can be used for scheduling
+    // Schedule to stop recording and start playback after 4 beats
     var task = new Task(function() {
         // Stop recording (clipSlot will now contain the new clip)
         clipSlot.call("stop");
@@ -74,7 +115,6 @@ function recordBassClip() {
         clipSlot.call("fire");
     }, this);
     // 4 beats = 4 * 60000 / tempo ms (assuming 120bpm = 500ms per beat = 2000ms)
-    // For now, use 2000ms as a placeholder for 4 beats at 120bpm
     task.schedule(2000); // TODO: Make this dynamic based on tempo
 }
 
@@ -86,6 +126,13 @@ function anything() {
             break;
         case "recordBassClip":
             recordBassClip();
+            break;
+        case "getTempo":
+            getCurrentTempo();
+            break;
+        case "sendInitialTempo":
+            post("React app connected - sending current tempo\n");
+            getCurrentTempo();
             break;
         default:
             post("Unknown message: " + messagename + "\n");

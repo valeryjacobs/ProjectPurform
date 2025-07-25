@@ -6,6 +6,7 @@ function App() {
   const [messages, setMessages] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [trackNames, setTrackNames] = useState<string[]>([]); // <-- Added state for track names
+  const [currentTempo, setCurrentTempo] = useState<number>(0); // <-- Added state for tempo
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -24,6 +25,11 @@ function App() {
         if (data.type === 'trackNames') {
           setTrackNames(data.data);
           setMessages(msgs => [...msgs, `[In] Track names received (${data.data.length})`]);
+          return;
+        }
+        if (data.type === 'currentTempo') {
+          setCurrentTempo(data.data);
+          setMessages(msgs => [...msgs, `[In] Tempo updated: ${data.data} BPM`]);
           return;
         }
       } catch (e) {
@@ -65,14 +71,22 @@ function App() {
     }
   };
 
+  const getTempo = () => {
+    if (wsRef.current && status === 'connected') {
+      wsRef.current.send('getTempo');
+      setMessages(msgs => [...msgs, '[Out] getTempo']);
+    }
+  };
+
   return (
     <div className="ws-tester">
       <h1>WebSocket Tester</h1>
       <div>Status: <span className={`status status-${status}`}>{status}</span></div>
+      <div>Current Tempo: <span className="tempo">{currentTempo} BPM</span></div>
       <div className="ws-messages">
         <h2>Messages</h2>
         <div className="ws-messages-list">
-          {messages.map((msg, i) => <div key={i}>{msg}</div>)}
+          {messages.slice().reverse().map((msg, i) => <div key={messages.length - 1 - i}>{msg}</div>)}
         </div>
       </div>
       <button onClick={getTrackNames} disabled={status !== 'connected'}>
@@ -80,6 +94,9 @@ function App() {
       </button>
       <button onClick={recordBassClip} disabled={status !== 'connected'}>
         Record Bass Clip
+      </button>
+      <button onClick={getTempo} disabled={status !== 'connected'}>
+        Get Current Tempo
       </button>
       {trackNames.length > 0 && (
         <div>
