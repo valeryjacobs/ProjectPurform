@@ -1,10 +1,28 @@
 // mynode.js
 const maxAPI = require("max-api");
-const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
+maxAPI.post("Starting purform.js...");
+
+let WebSocket;
+try {
+  WebSocket = require('ws');
+  maxAPI.post("WebSocket module loaded successfully");
+} catch (error) {
+  maxAPI.post("Failed to load WebSocket module: " + error.message);
+  return;
+}
+
+let wss;
+try {
+  wss = new WebSocket.Server({ port: 9000 });
+  maxAPI.post("WebSocket server started on port 9000");
+} catch (error) {
+  maxAPI.post("Failed to start WebSocket server: " + error.message);
+  return;
+}
 
 // Log when the script loads
 maxAPI.post("My code runs!!");
+maxAPI.post("Script initialization complete");
 
 // Handle any message from Max
 maxAPI.addHandler("bang", () => {
@@ -15,6 +33,7 @@ maxAPI.addHandler("bang", () => {
 let wsClients = [];
 
 wss.on('connection', function connection(ws) {
+  maxAPI.post("WebSocket client connected");
   wsClients.push(ws);
 
   ws.on('message', function incoming(message) {
@@ -37,17 +56,20 @@ wss.on('connection', function connection(ws) {
     maxAPI.post(`msgStr: "${msgStr}"`);
     maxAPI.post(`msgStr.trim(): "${msgStr.trim()}"`);
 
+    // Handle messages by routing to Max for Live logic
     if (msgStr.trim() === 'getTrackNames') {
       maxAPI.post("Track names requested");
       maxAPI.outlet('getTrackNames');
-    }
-    // Optionally, handle messages and trigger Max events
-    if (message === 'bang') {
+    } else if (msgStr.trim() === 'recordBassClip') {
+      maxAPI.post("Record Bass Clip requested");
+      maxAPI.outlet('recordBassClip');
+    } else if (message === 'bang') {
       maxAPI.outlet('got a bang!');
     }
   });
 
   ws.on('close', () => {
+    maxAPI.post("WebSocket client disconnected");
     wsClients = wsClients.filter(client => client !== ws);
   });
 

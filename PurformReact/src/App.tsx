@@ -10,7 +10,7 @@ function App() {
 
   useEffect(() => {
     setStatus('connecting');
-    const ws = new WebSocket('ws://localhost:8080');
+    const ws = new WebSocket('ws://localhost:9000');
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -58,6 +58,13 @@ function App() {
     }
   };
 
+  const recordBassClip = () => {
+    if (wsRef.current && status === 'connected') {
+      wsRef.current.send('recordBassClip');
+      setMessages(msgs => [...msgs, '[Out] recordBassClip']);
+    }
+  };
+
   return (
     <div className="ws-tester">
       <h1>WebSocket Tester</h1>
@@ -70,6 +77,9 @@ function App() {
       </div>
       <button onClick={getTrackNames} disabled={status !== 'connected'}>
         Get Track Names
+      </button>
+      <button onClick={recordBassClip} disabled={status !== 'connected'}>
+        Record Bass Clip
       </button>
       {trackNames.length > 0 && (
         <div>

@@ -17,7 +17,7 @@ function getTrackNames() {
         post("Track " + i + " name: " + name + "\n");
         names.push(name);
     }
-    post("Sending trackNames: " + names.join(", ") + "\n");
+    post("Sending yyy trackNames: " + names.join(", ") + "\n");
     outlet(0, ["trackNames"].concat(names));
 }
 
